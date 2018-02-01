@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import os, random, datetime, shutil
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-import os
 import time as time
 
 # 区分是train还是play
@@ -116,7 +116,18 @@ def get_screen_shot():
 
 # 按压press_time时间后松开，完成一次跳跃
 def jump(press_time):
-    cmd = 'adb shell input swipe 320 410 320 410 ' + str(press_time)
+
+    xs = [random.uniform(950, 980) for _ in range(2)]
+    ys = [random.uniform(1750, 1820) for _ in range(2)]
+    
+    cmd = 'adb shell input swipe {} {} {} {} {}'.format(
+        xs[0],
+        ys[0], 
+        xs[1], 
+        ys[1], 
+        press_time
+    )
+    print(cmd)
     os.system(cmd)
 
 
@@ -132,9 +143,9 @@ def has_die(x_in):
 
 # 游戏失败后重新开始，(540，1588)为1080*1920分辨率手机上重新开始按钮的位置
 def restart():
-    cmd = 'adb shell input swipe 540 1588 540 1588 10'
+    cmd = 'adb shell input swipe 540 1588 540 1588 {}'.format(int(random.uniform(35, 98)))
     os.system(cmd)
-    time.sleep(1)
+    time.sleep(2)
 
 
 # 从build_train_data.py生成的图片中读取数据，用于训练
@@ -191,13 +202,21 @@ def start_train(sess):
         file_count = file_count + 1
         train_count = train_count + 1
 
+
 # 开始玩耍
 def start_play(sess):
+    folder =  './records/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    os.mkdir(folder);
     while True:
         print("----------------------------")
         x_in = get_screen_shot()
+        ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        shutil.copyfile('./jump_temp.jpg', folder + '/' + ctime + '.jpg');
+        shutil.copyfile('./jump_temp.png', folder + '/' + ctime + '.png');
         if has_die(x_in):
             print("died!")
+            folder = './records/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # os.mkdir(folder);
             restart()
             return
 
@@ -209,9 +228,16 @@ def start_play(sess):
         print("touch time: ", y_result[0][0] * 1000, "ms")
 
         touch_time = int(y_result[0][0] * 1000)
+        os.rename(folder + '/' + ctime + '.jpg', folder + '/' + ctime + '_' + str(touch_time) + '.jpg')
+        os.rename(folder + '/' + ctime + '.png', folder + '/' + ctime + '_' + str(touch_time) + '.png')
         jump(touch_time)
         time.sleep(touch_time / 1000 + 0.5)
 
+
+def test():
+    arr = np.load("./train_data/time.npz")["abc"].tolist()
+    print(len(arr))
+    print(arr)
 
 with tf.Session() as sess:
     sess.run(tf_init)
@@ -220,5 +246,9 @@ with tf.Session() as sess:
         while True:
             start_train(sess)
     else:
+        # test()
         while True:
             start_play(sess)
+            # pass
+
+
