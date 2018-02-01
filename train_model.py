@@ -193,7 +193,7 @@ def start_train(sess):
             dir_index += 1
             touch_time_arr = []
             # 忽略掉数据少的
-            if len(os.listdir(path + record)) < 50:
+            if len(os.listdir(path + record)) < 8:
                 print('忽略：', record)
                 continue
             images = sortByTime(path + record)
@@ -228,7 +228,7 @@ def start_train(sess):
 def train_one(sess, folder):
     touch_time_arr = []
     # 忽略掉数据少的
-    if len(os.listdir(folder)) < 30:
+    if len(os.listdir(folder)) < 8:
         print('忽略：', folder)
         return
     images = sortByTime(folder)
@@ -284,7 +284,7 @@ def start_play(sess):
         
         touch_time = int(y_result[0][0] * 1000)
 
-        rdn_t = random.randrange(20, 50);
+        rdn_t = random.randrange(20, 30);
         os.rename(folder + '/' + ctime + '.jpg', folder + '/' + ctime + '_' + str(touch_time + rdn_t) + '.jpg')
         os.rename(folder + '/' + ctime + '.png', folder + '/' + ctime + '_' + str(touch_time + rdn_t) + '.png')
         
