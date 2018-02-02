@@ -232,7 +232,7 @@ def start_train(sess):
 def train_one(sess, folder, batch):
     touch_time_arr = []
     # 忽略掉数据少的
-    if len(os.listdir(folder)) < 8:
+    if len(os.listdir(folder)) < 30:
         print('忽略：', folder)
         return
     images = sortByTime(folder)
@@ -298,7 +298,7 @@ def start_play(sess):
         
         print("touch time: ", touch_time, "ms")
         jump(touch_time)
-        time.sleep(touch_time / 1000 + random.randrange(40, 80) / 100)
+        time.sleep(touch_time / 1000 + random.randrange(40, 120) / 100)
 
 def saveLoss(filepath, data):
     if os.path.exists(filepath) == False:
@@ -320,6 +320,7 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
+        # train_one(sess, './records/2018-01-30 13:15:00', 50)
         start_train(sess)
     else:
         # while True:
