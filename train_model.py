@@ -225,7 +225,7 @@ def start_train(sess):
     print('训练结束！')
 
 #训练单局游戏的图
-def train_one(sess, folder):
+def train_one(sess, folder, batch):
     touch_time_arr = []
     # 忽略掉数据少的
     if len(os.listdir(folder)) < 8:
@@ -234,28 +234,29 @@ def train_one(sess, folder):
     images = sortByTime(folder)
     print('总图片数：', len(images))
     print(images)
-    img_index = 1;
-    for img in images[:-6]:
-        if img.endswith('.jpg') and img.find('_') > 0:
-            filepath = folder + '/' + img
-            x_in, y_out = get_screen_shot_file_data(filepath)
-            # print(x_in, y_out)
-            # break
-            # ————————————————这里只是打印出来看效果——————————————————
-            # y_result 神经网络自己算出来的按压时间
-            y_result = sess.run(y_fc3, feed_dict={x: x_in, keep_prob: 1})
-            # loss 计算损失
-            loss = sess.run(cross_entropy, feed_dict={y_fc3: y_result, y_: y_out})
-            touch_time_arr.append(loss)
-            ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(ctime, '\t', str(img_index) + '/' + str(len(images)), "\t", filepath)
-            print('origin:', y_out[0][0])
-            print('result:', y_result[0][0])
-            print("loss:", '{0:.10f}'.format(loss))
-            # —————————————————————————————————————————————————————
-            # 使用x_in，y_out训练
-            sess.run(train_step, feed_dict={x: x_in, y_: y_out, keep_prob: 0.6, learn_rate: 0.00002})
-        img_index += 1
+    for index in range(batch):
+        img_index = 1;
+        for img in images[:-6]:
+            if img.endswith('.jpg') and img.find('_') > 0:
+                filepath = folder + '/' + img
+                x_in, y_out = get_screen_shot_file_data(filepath)
+                # print(x_in, y_out)
+                # break
+                # ————————————————这里只是打印出来看效果——————————————————
+                # y_result 神经网络自己算出来的按压时间
+                y_result = sess.run(y_fc3, feed_dict={x: x_in, keep_prob: 1})
+                # loss 计算损失
+                loss = sess.run(cross_entropy, feed_dict={y_fc3: y_result, y_: y_out})
+                touch_time_arr.append(loss)
+                ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                print(ctime, '\t', str(index) + '/' + str(batch), '\t', str(img_index) + '/' + str(len(images)), "\t", filepath)
+                print('origin:', y_out[0][0])
+                print('result:', y_result[0][0])
+                print("loss:", '{0:.10f}'.format(loss))
+                # —————————————————————————————————————————————————————
+                # 使用x_in，y_out训练
+                sess.run(train_step, feed_dict={x: x_in, y_: y_out, keep_prob: 0.6, learn_rate: 0.00002})
+            img_index += 1
     saveLoss('./time.npz', touch_time_arr)            
     saver_init.save(sess, "./model/mode.mod")
 
@@ -271,7 +272,7 @@ def start_play(sess):
         shutil.copyfile('./jump_temp.png', folder + '/' + ctime + '.png');
         if has_die(x_in):
             print("died!")
-            train_one(sess, folder)
+            train_one(sess, folder, 5)
             print('训练完成，创建新目录开始下一局：')
             # folder = './records/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             restart()
@@ -284,9 +285,9 @@ def start_play(sess):
         
         touch_time = int(y_result[0][0] * 1000)
 
-        rdn_t = random.randrange(20, 30);
-        os.rename(folder + '/' + ctime + '.jpg', folder + '/' + ctime + '_' + str(touch_time + rdn_t) + '.jpg')
-        os.rename(folder + '/' + ctime + '.png', folder + '/' + ctime + '_' + str(touch_time + rdn_t) + '.png')
+        # rdn_t = random.randrange(20, 30);
+        os.rename(folder + '/' + ctime + '.jpg', folder + '/' + ctime + '_' + str(touch_time) + '.jpg')
+        os.rename(folder + '/' + ctime + '.png', folder + '/' + ctime + '_' + str(touch_time) + '.png')
         
         print("touch time: ", touch_time, "ms")
         jump(touch_time)
@@ -307,9 +308,9 @@ IS_TRAINING = False
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
-    model_path = './model/mode.mod'
-    if os.path.exists(model_path + '.index'):
-        saver_init.restore(sess, model_path)
+    model_path = './model/'
+    if len(os.listdir(model_path)) > 0:
+        saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
         # saveLoss('./time.npz', [1, 2, 3])
