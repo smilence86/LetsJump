@@ -180,8 +180,9 @@ def sortByTime(dirpath):
 
 # 开始训练
 def start_train(sess):
-    path = './records/';
-    dirs = os.listdir(path);
+    path = './records/'
+    dirs = os.listdir(path)
+    dirs.sort()
     print(dirs)
     print('总记录数：', len(dirs))
     batch = 0
@@ -193,7 +194,7 @@ def start_train(sess):
             dir_index += 1
             touch_time_arr = []
             # 忽略掉数据少的
-            if len(os.listdir(path + record)) < 8:
+            if len(os.listdir(path + record)) < 100:
                 print('忽略：', record)
                 continue
             images = sortByTime(path + record)
@@ -214,7 +215,10 @@ def start_train(sess):
                     print(ctime, '\t', str(batch) + '/' + str(total_batch), '\t', str(dir_index) + '/' + str(len(dirs)), '\t', filepath)
                     print('origin:', y_out[0][0])
                     print('result:', y_result[0][0])
-                    print("loss:", '{0:.10f}'.format(loss))
+                    if loss > 0.2:
+                        print("异常loss:", '{0:.10f}'.format(loss))
+                    else:
+                        print("loss:", '{0:.10f}'.format(loss))
                     # —————————————————————————————————————————————————————
                     # 使用x_in，y_out训练
                     sess.run(train_step, feed_dict={x: x_in, y_: y_out, keep_prob: 0.6, learn_rate: 0.00002})
@@ -252,7 +256,10 @@ def train_one(sess, folder, batch):
                 print(ctime, '\t', str(index) + '/' + str(batch), '\t', str(img_index) + '/' + str(len(images)), "\t", filepath)
                 print('origin:', y_out[0][0])
                 print('result:', y_result[0][0])
-                print("loss:", '{0:.10f}'.format(loss))
+                if loss > 0.2:
+                    print("异常loss:", '{0:.10f}'.format(loss))
+                else:
+                    print("loss:", '{0:.10f}'.format(loss))
                 # —————————————————————————————————————————————————————
                 # 使用x_in，y_out训练
                 sess.run(train_step, feed_dict={x: x_in, y_: y_out, keep_prob: 0.6, learn_rate: 0.00002})
@@ -304,7 +311,7 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-IS_TRAINING = False
+IS_TRAINING = True
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
@@ -313,10 +320,8 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        # saveLoss('./time.npz', [1, 2, 3])
         start_train(sess)
     else:
-        # test()
         # while True:
         start_play(sess)
             # pass
