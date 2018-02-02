@@ -11,6 +11,7 @@ from matplotlib.font_manager import *
 
 myfont = FontProperties(fname='./SourceHanSerifCN-Light.otf')
 
+
 def showGraph(filepath):
     arr = np.load(filepath)['array'].tolist()[:]
     print(len(arr))

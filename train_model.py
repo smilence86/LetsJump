@@ -124,14 +124,14 @@ def get_screen_shot():
 # 按压press_time时间后松开，完成一次跳跃
 def jump(press_time):
 
-    xs = [random.uniform(950, 980) for _ in range(2)]
+    xs = [random.uniform(840, 870) for _ in range(2)]
     ys = [random.uniform(1750, 1820) for _ in range(2)]
     
     cmd = 'adb shell input swipe {} {} {} {} {}'.format(
-        xs[0],
-        ys[0], 
-        xs[1], 
-        ys[1], 
+        int(xs[0]),
+        int(ys[0]), 
+        int(xs[1]), 
+        int(ys[1]), 
         press_time
     )
     print(cmd)
@@ -151,9 +151,9 @@ def has_die(x_in):
 # 游戏失败后重新开始，(540，1588)为1080*1920分辨率手机上重新开始按钮的位置
 def restart():
     #adb shell wm size
-    cmd = 'adb shell input swipe 540 1588 540 1588 {}'.format(int(random.uniform(35, 98)))
+    cmd = 'adb shell input swipe 550 1588 560 1598 {}'.format(int(random.uniform(35, 140)))
     os.system(cmd)
-    time.sleep(1)
+    time.sleep(3)
 
 
 # 从build_train_data.py生成的图片中读取数据，用于训练
@@ -190,11 +190,12 @@ def start_train(sess):
     while batch < total_batch:
         dir_index = 0
         for record in dirs:
+            # train_one(sess, './records/2018-01-30 13:15:00', 30)
             print(record)
             dir_index += 1
             touch_time_arr = []
             # 忽略掉数据少的
-            if len(os.listdir(path + record)) < 100:
+            if len(os.listdir(path + record)) < 10:
                 print('忽略：', record)
                 continue
             images = sortByTime(path + record)
@@ -280,8 +281,7 @@ def start_play(sess):
         if has_die(x_in):
             print("died!")
             train_one(sess, folder, 5)
-            print('训练完成，创建新目录开始下一局：')
-            # folder = './records/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print('训练完成！')
             restart()
             return
 
@@ -298,11 +298,10 @@ def start_play(sess):
         
         print("touch time: ", touch_time, "ms")
         jump(touch_time)
-        time.sleep(touch_time / 1000 + random.randrange(40, 120) / 100)
+        time.sleep(touch_time / 1000 + random.randrange(100, 850) / 1000)
 
 def saveLoss(filepath, data):
     if os.path.exists(filepath) == False:
-        # npr = np.array(data)
         np.savez(filepath, array=data)
     else:
         result = np.load(filepath)['array'].tolist()
@@ -311,7 +310,7 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-IS_TRAINING = False
+IS_TRAINING = True
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
@@ -320,7 +319,7 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        # train_one(sess, './records/2018-01-30 13:15:00', 50)
+        # train_one(sess, './records/2018-01-30 13:15:00', 30)
         start_train(sess)
     else:
         # while True:
