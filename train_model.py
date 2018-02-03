@@ -186,7 +186,7 @@ def start_train(sess):
     print(dirs)
     print('总记录数：', len(dirs))
     batch = 0
-    total_batch = 30
+    total_batch = 50
     while batch < total_batch:
         dir_index = 0
         for record in dirs:
@@ -267,6 +267,7 @@ def train_one(sess, folder, batch):
             img_index += 1
     saveLoss('./time.npz', touch_time_arr)            
     saver_init.save(sess, "./model/mode.mod")
+    print('训练完成！')
 
 # 开始玩耍
 def start_play(sess):
@@ -281,7 +282,6 @@ def start_play(sess):
         if has_die(x_in):
             print("died!")
             train_one(sess, folder, 5)
-            print('训练完成！')
             restart()
             return
 
@@ -310,7 +310,7 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-IS_TRAINING = True
+IS_TRAINING = False
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
@@ -319,11 +319,11 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        # train_one(sess, './records/2018-01-30 13:15:00', 30)
-        start_train(sess)
+        train_one(sess, './records/2018-01-30 13:15:00', 30)
+        # start_train(sess)
     else:
-        # while True:
-        start_play(sess)
+        while True:
+            start_play(sess)
             # pass
 
 
