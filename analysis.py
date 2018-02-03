@@ -42,7 +42,7 @@ def removeLessFolder(path):
     dirs = os.listdir(path)
     dirs.sort()
     for record in dirs:
-        if len(os.listdir(path + record)) < 15 and record != '2018-01-30 13:15:00':
+        if len(os.listdir(path + record)) < 50 and record != '2018-01-30 13:15:00':
             print('删除目录：' + path + record)
             shutil.rmtree(path + record)
 
