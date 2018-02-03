@@ -4,7 +4,6 @@ import random, time as time, datetime, shutil, os, cv2
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-import matplotlib.pyplot as plt
 
 
 def weight_variable(shape, std):
@@ -310,7 +309,7 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-IS_TRAINING = False
+IS_TRAINING = True
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
