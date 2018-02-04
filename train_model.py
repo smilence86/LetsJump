@@ -183,12 +183,13 @@ def start_train(sess):
     dirs = os.listdir(path)
     dirs.sort()
     print(dirs)
-    print('总记录数：', len(dirs))
+    print('总局数：', len(dirs))
     batch = 0
-    total_batch = 50
+    total_batch = 3
     while batch < total_batch:
         dir_index = 0
-        for record in dirs:
+        dir_total = 10
+        for record in dirs[-dir_total:]:
             # train_one(sess, './records/2018-01-30 13:15:00', 30)
             print(record)
             dir_index += 1
@@ -212,7 +213,7 @@ def start_train(sess):
                     loss = sess.run(cross_entropy, feed_dict={y_fc3: y_result, y_: y_out})
                     touch_time_arr.append(loss)
                     ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    print(ctime, '\t', str(batch) + '/' + str(total_batch), '\t', str(dir_index) + '/' + str(len(dirs)), '\t', filepath)
+                    print(ctime, '\t', str(batch) + '/' + str(total_batch), '\t', str(dir_index) + '/' + str((dir_total)), '\t', filepath)
                     print('origin:', y_out[0][0])
                     print('result:', y_result[0][0])
                     if loss > 0.2:
@@ -309,7 +310,7 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-IS_TRAINING = False
+IS_TRAINING = True
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
@@ -318,8 +319,8 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        train_one(sess, './records/2018-01-30 13:15:00', 30)
-        # start_train(sess)
+        # train_one(sess, './records/2018-01-30 13:15:00', 30)
+        start_train(sess)
     else:
         while True:
             start_play(sess)
