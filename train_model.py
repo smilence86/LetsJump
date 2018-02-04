@@ -319,7 +319,7 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        train_one(sess, './records/2018-01-30 13:15:00', 30)
+        train_one(sess, './records/2018-01-30 13:15:00', 10)
         # start_train(sess)
     else:
         while True:
