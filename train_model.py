@@ -188,7 +188,7 @@ def start_train(sess):
     total_batch = 10
     while batch < total_batch:
         dir_index = 0
-        dir_total = 10  #最后几局游戏
+        dir_total = 5  #最后几局游戏
         for record in dirs[-dir_total:]:
             # train_one(sess, './records/2018-01-30 13:15:00', 30)
             print(record)
@@ -241,7 +241,7 @@ def train_one(sess, folder, batch):
     print(images)
     for index in range(batch):
         img_index = 1;
-        for img in images[:-6]:
+        for img in images[-200:]:
             if img.endswith('.jpg') and img.find('_') > 0:
                 filepath = folder + '/' + img
                 x_in, y_out = get_screen_shot_file_data(filepath)
