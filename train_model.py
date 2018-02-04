@@ -310,7 +310,7 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-IS_TRAINING = True
+IS_TRAINING = False
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
