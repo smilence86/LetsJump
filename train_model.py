@@ -188,7 +188,7 @@ def start_train(sess):
     total_batch = 3
     while batch < total_batch:
         dir_index = 0
-        dir_total = 10
+        dir_total = 10  #最后几局游戏
         for record in dirs[-dir_total:]:
             # train_one(sess, './records/2018-01-30 13:15:00', 30)
             print(record)
