@@ -185,7 +185,7 @@ def start_train(sess):
     print(dirs)
     print('总局数：', len(dirs))
     batch = 0
-    total_batch = 3
+    total_batch = 10
     while batch < total_batch:
         dir_index = 0
         dir_total = 10  #最后几局游戏
@@ -281,7 +281,7 @@ def start_play(sess):
         shutil.copyfile('./jump_temp.png', folder + '/' + ctime + '.png');
         if has_die(x_in):
             print("died!")
-            train_one(sess, folder, 5)
+            # train_one(sess, folder, 5)
             restart()
             return
 
@@ -310,7 +310,7 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-IS_TRAINING = True
+IS_TRAINING = False
 # with tf.device('/gpu:0'):
 with tf.Session() as sess:
     sess.run(tf_init)
@@ -319,8 +319,8 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        # train_one(sess, './records/2018-01-30 13:15:00', 30)
-        start_train(sess)
+        train_one(sess, './records/2018-01-30 13:15:00', 30)
+        # start_train(sess)
     else:
         while True:
             start_play(sess)
