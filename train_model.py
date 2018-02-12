@@ -185,10 +185,10 @@ def start_train(sess):
     print(dirs)
     print('总局数：', len(dirs))
     batch = 0
-    total_batch = 10
+    total_batch = 30
     while batch < total_batch:
         dir_index = 0
-        dir_total = 5  #最后几局游戏
+        dir_total = 10  #最后几局游戏
         for record in dirs[-dir_total:]:
             # train_one(sess, './records/2018-01-30 13:15:00', 30)
             print(record)
@@ -241,7 +241,7 @@ def train_one(sess, folder, batch):
     print(images)
     for index in range(batch):
         img_index = 1;
-        for img in images[-200:]:
+        for img in images[-300:]:
             if img.endswith('.jpg') and img.find('_') > 0:
                 filepath = folder + '/' + img
                 x_in, y_out = get_screen_shot_file_data(filepath)
@@ -319,8 +319,8 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        train_one(sess, './records/2018-01-30 13:15:00', 10)
-        # start_train(sess)
+        # train_one(sess, './records/2018-01-30 13:15:00', 50)
+        start_train(sess)
     else:
         while True:
             start_play(sess)

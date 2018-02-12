@@ -13,7 +13,7 @@ myfont = FontProperties(fname='./SourceHanSerifCN-Light.otf')
 
 
 def showGraph(filepath):
-    arr = np.load(filepath)['array'].tolist()[-1000:]
+    arr = np.load(filepath)['array'].tolist()[:]
     print(len(arr))
     # for t in arr:
     #     if t > 0.3:
