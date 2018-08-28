@@ -14,23 +14,24 @@ myfont = FontProperties(fname='./SourceHanSerifCN-Light.otf')
 
 def showGraph(filepath):
     arr = np.load(filepath)['array'].tolist()[:]
-    # arr = np.load(filepath)['array'].tolist()[-1000:]
+    # arr = np.load(filepath)['array'].tolist()[-50:]
     print(len(arr))
     # for t in arr:
     #     if t > 0.3:
-    #         print('{0:.10f}'.format(t))
-    # print(arr)
+            # print('{0:.10f}'.format(t))
+    print(arr)
     x = np.arange(len(arr))
+    print(len(x))
     y = arr
     # plt.figure()
     matplotlib.rcParams['axes.unicode_minus']=False  
-    plt.title(u'loss损失函数', fontproperties=myfont)
+    plt.title(u'loss趋势', fontproperties=myfont)
     plt.xlabel('训练次数', fontproperties=myfont)
     plt.ylabel('loss')
     plt.plot(x, y)
     plt.show()
 
-showGraph('./time.npz')
+showGraph('./loss.npz')
 
 
 def sortByTime(dirpath):

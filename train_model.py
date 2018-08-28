@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import random, time as time, datetime, shutil, os, cv2
 import tensorflow as tf
 import numpy as np
@@ -7,86 +6,129 @@ from PIL import Image
 
 
 def weight_variable(shape, std):
-    initial = tf.truncated_normal(shape, stddev=std, mean=0)
+    initial = tf.truncated_normal(shape, mean=0.0, stddev=std)
     return tf.Variable(initial)
-
 
 def bias_variable(shape, std):
     initial = tf.constant(std, shape=shape)
     return tf.Variable(initial)
 
+def conv2d(x, W, b, s=1):
+    x = tf.nn.conv2d(x, W, strides=[1, s, s, 1], padding='SAME')
+    x = tf.nn.bias_add(x, b)
+    out_size = W.get_shape().as_list()[3]
+    # print(out_size)
+    x = batch_norm(x, out_size)
+    return tf.nn.relu(x)
 
-def conv2d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='VALID')
+def maxpool(x, k=2):
+    return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
-
-def max_pool_2x2(x):
-    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
-
-
-def max_pool_4x4(x):
-    return tf.nn.max_pool(x, ksize=[1, 4, 4, 1], strides=[1, 4, 4, 1], padding='VALID')
-
-
-# def tf_ops():
-# 输入：100*100的灰度图片，前面的None是batch size，这里都为1
+EPOCH = 10
+batch_size = 5
+Learn_rate = 0.00002
+# 输入：100*100的灰度图片，前面的None是batch size
 x = tf.placeholder(tf.float32, shape=[None, 100, 100, 1])
-# 输出：一个浮点数，就是按压时间，单位s
-y_ = tf.placeholder(tf.float32, shape=[None, 1])
-
-# 第一层卷积 12个feature map
-W_conv1 = weight_variable([5, 5, 1, 12], 0.1)
-b_conv1 = bias_variable([12], 0.1)
-# 卷积后为96*96*12
-
-h_conv1 = tf.nn.relu(conv2d(x, W_conv1) + b_conv1)
-h_pool1 = max_pool_4x4(h_conv1)
-# 池化后为24*24*12
-
-# 第二层卷积 24个feature map
-W_conv2 = weight_variable([5, 5, 12, 24], 0.1)
-b_conv2 = bias_variable([24], 0.1)
-# 卷积后为20*20*24
-
-h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
-h_pool2 = max_pool_4x4(h_conv2)
-# 池化后为5*5*24
-
-# 全连接层5*5*24 --> 32
-W_fc1 = weight_variable([5 * 5 * 24, 32], 0.1)
-b_fc1 = bias_variable([32], 0.1)
-h_pool2_flat = tf.reshape(h_pool2, [-1, 5 * 5 * 24])
-h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
-
-# 全连接层5*5*24 --> 32
-W_fc2 = weight_variable([32, 600], 0.1)
-b_fc2 = bias_variable([600], 0.1)
-# h_pool3_flat = tf.reshape(h_pool3, [-1, 5 * 5 * 24])
-h_fc2 = tf.nn.relu(tf.matmul(h_fc1, W_fc2) + b_fc2)
-
-# drapout，play时为1训练时为0.6
+# 输出：一个浮点数，就是按压时间，单位ms
+y = tf.placeholder(tf.float32, shape=[None, 1])
 keep_prob = tf.placeholder(tf.float32)
-h_fc1_drop = tf.nn.dropout(h_fc2, keep_prob)
-# 学习率
 learn_rate = tf.placeholder(tf.float32)
 
-# 32 --> 1
-W_fc3 = weight_variable([600, 1], 0.1)
-b_fc3 = bias_variable([1], 0.1)
-y_fc3 = tf.matmul(h_fc1_drop, W_fc3) + b_fc3
+weights = {
+    #
+    'wc1': weight_variable([5, 5, 1, 32], 0.1),   #50*50
+    #
+    'wc2': weight_variable([3, 3, 32, 64], 0.1),    #25*25
+    #
+    'wc3': weight_variable([3, 3, 64, 128], 0.1),    #13*13
+    #
+    'wc4': weight_variable([3, 3, 128, 256], 0.1),    #7*7
+    # fully connected, 
+    'w_fc1': weight_variable([7*7*256, 512], 0.1),
+    # fully connected, 
+    'w_fc2': weight_variable([512, 64], 0.1),
+    # 
+    'out': weight_variable([64, 1], 0.1)
+}
 
-# 因输出直接是时间值，而不是分类概率，所以用平方损失
-cross_entropy = tf.reduce_mean(tf.square(y_fc3 - y_))
-train_step = tf.train.AdamOptimizer(learn_rate).minimize(cross_entropy)
+biases = {
+    'bc1': bias_variable([32], 0.1),
+    'bc2': bias_variable([64], 0.1),
+    'bc3': bias_variable([128], 0.1),
+    'bc4': bias_variable([256], 0.1),
+    'b_fc1': bias_variable([512], 0.1),
+    'b_fc2': bias_variable([64], 0.1),
+    'out': bias_variable([1], 0.1)
+}
+
+def batch_norm(x, n_out, scope='bn'):
+    """
+    Batch normalization on convolutional maps.
+    Args:
+        x:           Tensor, 4D BHWD input maps
+        n_out:       integer, depth of input maps
+        scope:       string, variable scope
+    Return:
+        normed:      batch-normalized maps
+    """
+    with tf.variable_scope(scope):
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]), name='beta', trainable=True)
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]), name='gamma', trainable=True)
+        batch_mean, batch_var = tf.nn.moments(x, [0,1,2], name='moments')
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+        def mean_var_with_update():
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = mean_var_with_update()
+        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
+    return normed
+
+def conv_net(x, weights, biases, keep_prob):
+    # x = tf.reshape(x, shape=[-1, 100, 100, 1])
+    conv1 = conv2d(x, weights['wc1'], biases['bc1'])
+    print(conv1.shape)
+    max_pool1 = maxpool(conv1, k=2)
+    print(max_pool1.shape)
+
+    conv2 = conv2d(max_pool1, weights['wc2'], biases['bc2'])
+    print(conv2.shape)
+    max_pool2 = maxpool(conv2, k=2)
+    print(max_pool2.shape)
+
+    conv3 = conv2d(max_pool2, weights['wc3'], biases['bc3'])
+    print(conv3.shape)
+    max_pool3 = maxpool(conv3, k=2)
+    print(max_pool3.shape)
+
+    conv4 = conv2d(max_pool3, weights['wc4'], biases['bc4'])
+    print(conv4.shape)
+    max_pool4 = maxpool(conv4, k=2)
+    print(max_pool4.shape)
+
+    pool_flat = tf.reshape(max_pool4, [-1, weights['w_fc1'].get_shape().as_list()[0]]);
+    fc1 = tf.nn.relu(tf.matmul(pool_flat, weights['w_fc1']) + biases['b_fc1'])
+    fc1_drop = tf.nn.dropout(fc1, keep_prob)
+
+    fc2 = tf.nn.relu(tf.matmul(fc1_drop, weights['w_fc2']) + biases['b_fc2'])
+
+    out = tf.add(tf.matmul(fc2, weights['out']), biases['out'])
+    return out
+
+pred = conv_net(x, weights, biases, keep_prob)
+
+# 因输出直接是时间值，回归问题，而不是分类概率，所以用平方差损失
+diff = tf.subtract(y, pred)
+square = tf.square(diff)
+# sum_ = tf.reduce_sum(square)
+cost = tf.reduce_mean(square)
+# cost = tf.reduce_mean(tf.square(tf.subtract(pred, y)))
+train_step = tf.train.AdamOptimizer(learn_rate).minimize(cost)
 
 tf_init = tf.global_variables_initializer()
-
-saver_init = tf.train.Saver({"W_conv1": W_conv1, "b_conv1": b_conv1,
-                             "W_conv2": W_conv2, "b_conv2": b_conv2,
-                             "W_fc1": W_fc1, "b_fc1": b_fc1,
-                             "W_fc2": W_fc2, "b_fc2": b_fc2,
-                             "W_fc3": W_fc3, "b_fc3": b_fc3})
-    # return tf_init, saver_init, y_fc3, cross_entropy, train_step, x, y_, keep_prob, learn_rate
+saver_init = tf.train.Saver()#dict(weights, **biases)
 
 
 # 获取屏幕截图并转换为模型的输入
@@ -107,6 +149,11 @@ def get_screen_shot():
     bg.save(r"./jump_temp.jpg")
 
     img_data = tf.image.decode_jpeg(tf.gfile.FastGFile('./jump_temp.jpg', 'rb').read())
+    # img = cv2.imread('./jump_temp.jpg')
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # cv2.imshow('sss', img)
+    # cv2.waitKey(0);
+    # cv2.destroyAllWindows()
     # 使用TensorFlow转为只有1通道的灰度图
     img_data_gray = tf.image.rgb_to_grayscale(img_data)
     x_in = np.asarray(img_data_gray.eval(), dtype='float32')
@@ -139,9 +186,10 @@ def jump(press_time):
 
 # 判断是否游戏失败到分数页面
 def has_die(x_in):
+    # print(x_in[0])
     # 判断左上右上左下右下四个点的亮度
-    if (x_in[0][0][0][0] < 0.4) and (x_in[0][0][len(x_in[0][0]) - 1][0] < 0.4) and (
-        x_in[0][len(x_in[0]) - 1][0][0] < 0.4) and (x_in[0][len(x_in[0]) - 1][len(x_in[0][0]) - 1][0] < 0.4):
+    # and (x_in[0][len(x_in[0]) - 1][0][0] < 0.4) and (x_in[0][len(x_in[0]) - 1][len(x_in[0][0]) - 1][0] < 0.4)
+    if (x_in[0][0][10][0] < 0.4) and (x_in[0][0][len(x_in[0][0]) - 10][0] < 0.4):
         return True
     else:
         return False
@@ -168,7 +216,7 @@ def get_screen_shot_file_data(filepath):
         for j in range(len(x_in[i])):
             x_in[i][j][0] /= 255
 
-    return [x_in], [[int(filepath.split('_')[-1].split('.')[0]) / 1000]]
+    return x_in, [int(filepath.split('_')[-1].split('.')[0])]
 
 
 def sortByTime(dirpath):
@@ -208,9 +256,9 @@ def start_train(sess):
                     # break
                     # ————————————————这里只是打印出来看效果——————————————————
                     # y_result 神经网络自己算出来的按压时间
-                    y_result = sess.run(y_fc3, feed_dict={x: x_in, keep_prob: 1})
+                    y_result = sess.run(pred, feed_dict={x: x_in, keep_prob: 1})
                     # loss 计算损失
-                    loss = sess.run(cross_entropy, feed_dict={y_fc3: y_result, y_: y_out})
+                    loss = sess.run(cross_entropy, feed_dict={pred: y_result, y_: y_out})
                     touch_time_arr.append(loss)
                     ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     print(ctime, '\t', str(batch) + '/' + str(total_batch), '\t', str(dir_index) + '/' + str((dir_total)), '\t', filepath)
@@ -230,43 +278,50 @@ def start_train(sess):
     print('训练结束！')
 
 #训练单局游戏的图
-def train_one(sess, folder, batch):
-    touch_time_arr = []
+def train_one(sess, folder, epoch):
     # 忽略掉数据少的
     if len(os.listdir(folder)) < 30:
         print('忽略：', folder)
         return
-    images = sortByTime(folder)
-    print('总图片数：', len(images))
-    print(images)
-    for index in range(batch):
-        img_index = 1;
-        for img in images[-200:]:
-            if img.endswith('.jpg') and img.find('_') > 0:
-                filepath = folder + '/' + img
-                x_in, y_out = get_screen_shot_file_data(filepath)
-                # print(x_in, y_out)
-                # break
-                # ————————————————这里只是打印出来看效果——————————————————
-                # y_result 神经网络自己算出来的按压时间
-                y_result = sess.run(y_fc3, feed_dict={x: x_in, keep_prob: 1})
-                # loss 计算损失
-                loss = sess.run(cross_entropy, feed_dict={y_fc3: y_result, y_: y_out})
-                touch_time_arr.append(loss)
-                ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                print(ctime, '\t', str(index) + '/' + str(batch), '\t', str(img_index) + '/' + str(len(images)), "\t", filepath)
-                print('origin:', y_out[0][0])
-                print('result:', y_result[0][0])
-                if loss > 0.2:
-                    print("异常loss:", '{0:.10f}'.format(loss))
-                else:
-                    print("loss:", '{0:.10f}'.format(loss))
-                # —————————————————————————————————————————————————————
-                # 使用x_in，y_out训练
-                sess.run(train_step, feed_dict={x: x_in, y_: y_out, keep_prob: 0.6, learn_rate: 0.00002})
-            img_index += 1
-    saveLoss('./time.npz', touch_time_arr)            
-    saver_init.save(sess, "./model/mode.mod")
+    images = sortByTime(folder)[:]
+    print('总样本数：', len(images))
+    # print(images)
+    total_page = 1;
+    if len(images) % batch_size == 0:
+        total_page = int(len(images) / batch_size);
+    else:
+        total_page = int(len(images) / batch_size) + 1;
+    print('总页数：', total_page);
+    for e in range(epoch):
+        loss_array = []
+        for page in range(0, total_page):
+            imgs = images[page * batch_size:page * batch_size + batch_size]
+            batch_xs = []
+            batch_ys = []
+            for img in imgs[:]:
+                if img.endswith('.jpg') and img.find('_') > 0:
+                    filepath = folder + '/' + img
+                    x_in, y_out = get_screen_shot_file_data(filepath)
+                    # print(x_in, y_out)
+                    batch_xs.append(x_in)
+                    batch_ys.append(y_out)
+            # ————————————————这里只是打印出来看效果——————————————————
+            # 使用x_in，y_out训练
+            d, s, loss, y_pred, NULL = sess.run([diff, square, cost, pred, train_step], feed_dict={x: batch_xs, y: batch_ys, keep_prob: 0.6, learn_rate: Learn_rate})
+            #输出进度
+            ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(ctime, '\t', str(e) + '/' + str(epoch), '\t', str(page) + '/' + str(total_page), "\t", filepath)
+            # print(d)
+            # print(s)
+            # y_pred 神经网络自己算出来的按压时间
+            loss_array.append(loss)
+            #对比结果
+            print('origin:', [round(i[0], 0) for i in batch_ys])
+            print('result:', [int(i[0]) for i in y_pred.tolist()])
+            print("loss:", '{0:.10f}'.format(loss))
+            # —————————————————————————————————————————————————————
+        saveLoss('./loss.npz', loss_array)            
+        saver_init.save(sess, "./model/mode.mod")
     print('训练完成！')
 
 # 开始玩耍
@@ -280,17 +335,17 @@ def start_play(sess):
         shutil.copyfile('./jump_temp.jpg', folder + '/' + ctime + '.jpg');
         shutil.copyfile('./jump_temp.png', folder + '/' + ctime + '.png');
         if has_die(x_in):
-            print("died!")
+            print('died!')
             # train_one(sess, folder, 5)
             restart()
             return
 
         # 神经网络的输出
-        y_result = sess.run(y_fc3, feed_dict={x: x_in, keep_prob: 1})
+        y_result = sess.run(pred, feed_dict={x: x_in, keep_prob: 1})
         if y_result[0][0] < 0:
             y_result[0][0] = 0
         
-        touch_time = int(y_result[0][0] * 1000)
+        touch_time = int(y_result[0][0])
 
         # rdn_t = random.randrange(20, 30);
         os.rename(folder + '/' + ctime + '.jpg', folder + '/' + ctime + '_' + str(touch_time) + '.jpg')
@@ -298,7 +353,7 @@ def start_play(sess):
         
         print("touch time: ", touch_time, "ms")
         jump(touch_time)
-        time.sleep(touch_time / 1000 + random.randrange(100, 850) / 1000)
+        time.sleep(touch_time / 1000 + random.randrange(800, 1500) / 1000)
 
 def saveLoss(filepath, data):
     if os.path.exists(filepath) == False:
@@ -319,7 +374,9 @@ with tf.Session() as sess:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
         # while True:
-        train_one(sess, './records/2018-01-30 13:15:00', 10)
+        # x_in = get_screen_shot()
+        # print(has_die(x_in))
+        train_one(sess, './records/2018-01-30 13:15:00', EPOCH)
         # start_train(sess)
     else:
         while True:
