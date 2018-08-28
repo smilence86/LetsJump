@@ -1,3 +1,15 @@
+修复模型训练bug，在训练迭代过程中调用变量tf.image会导致内存暴涨，训练越来越慢。
+
+引入batch小批量梯度下降，当batch_size=1时为随机梯度下降。
+
+引入batch_norm，正则化层内数据分布，加快梯度下降。
+
+训练迭代过程中，避免多次调用sess.run()，防止变量运行多次导致数据混乱，如果要运行多个变量则调用一次sess.run()，传入多个参数得到批量结果。
+
+600张样本图片，当batch_size=10，大约训练500 EPOCH时loss趋势图：
+
+
+
 # LetsJump
 Android手机上自动玩微信跳一跳的TensorFlow实现
 ![](https://github.com/zhanyongsheng/raw/blob/master/LetsJump/pic.jpg)  
