@@ -103,6 +103,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-jump_temp.jpg
-jump_temp.png
+./jump_temp.jpg
+./jump_temp.png
 records
