@@ -2,7 +2,6 @@
 
 import random, time as time, datetime, shutil, os, cv2
 import numpy as np
-from PIL import Image
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import *
